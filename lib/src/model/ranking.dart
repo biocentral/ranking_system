@@ -1,6 +1,9 @@
 import 'package:collection/collection.dart';
 import 'package:ranking_system/src/utils/type_utils.dart';
 
+typedef Score = num;  // Score for RankingEntry, calculated from position for a given category
+typedef Place = int;  // Place for RankingEntry in List for LeaderboardRanking, can be tied
+
 class RankingEntry {
   final String name;
   final Map<String, Comparable> metrics;
@@ -15,12 +18,13 @@ class RankingGroup {
   RankingGroup({required this.name, required this.groupFunction});
 }
 
-final class _RankingResult {
-  final Map<String, Map<RankingEntry, num>> categoryRankingMap;
-  final Map<String, Map<RankingEntry, num>>? groupRankingMap;
-  final Map<RankingEntry, num> leaderboard;
 
-  final List<(RankingEntry, num)> calculatedLeaderboardRanking;
+final class _RankingResult {
+  final Map<String, Map<RankingEntry, Score>> categoryRankingMap;
+  final Map<String, Map<RankingEntry, Score>>? groupRankingMap;
+  final Map<RankingEntry, Score> leaderboard;
+
+  final List<(Place, RankingEntry, Score)> calculatedLeaderboardRanking;
 
   _RankingResult.categoryRanking(this.categoryRankingMap)
     : groupRankingMap = null,
@@ -34,17 +38,38 @@ final class _RankingResult {
   _RankingResult.leaderboard(this.categoryRankingMap, this.groupRankingMap, this.leaderboard)
     : calculatedLeaderboardRanking = calculateLeaderboardRanking(leaderboard);
 
-  static List<(RankingEntry, num)> calculateLeaderboardRanking(final Map<RankingEntry, num> leaderboard) {
-    final result = leaderboard.entries
+  static List<(Place, RankingEntry, num)> calculateLeaderboardRanking(
+      final Map<RankingEntry, num> leaderboard) {
+
+    // Sort by score descending (highest first)
+    final sortedEntries = leaderboard.entries
         .sorted((e1, e2) => e1.value.compareTo(e2.value))
         .reversed
-        .map((entry) => (entry.key, entry.value))
         .toList();
+
+    final List<(Place, RankingEntry, num)> result = [];
+
+    Place currentPlace = 1;
+    num? previousScore;
+
+    for (int i = 0; i < sortedEntries.length; i++) {
+      final entry = sortedEntries[i];
+      final currentScore = entry.value;
+
+      // If score is different from previous, update place to current index + 1
+      if (previousScore != null && currentScore != previousScore) {
+        currentPlace = i + 1;
+      }
+
+      result.add((currentPlace, entry.key, currentScore));
+      previousScore = currentScore;
+    }
+
     return result;
   }
 
   int getPlace(String entryName) {
-    return calculatedLeaderboardRanking.indexWhere((e) => e.$1.name == entryName) + 1;
+    return calculatedLeaderboardRanking.where((e) => e.$2.name == entryName).first.$1;
   }
 
   num getScore(String entryName) {
@@ -108,7 +133,7 @@ class Ranking {
     }
 
     // Calculate rankings for given categories
-    final Map<String, Map<RankingEntry, num>> categoryRanking = {};
+    final Map<String, Map<RankingEntry, Score>> categoryRanking = {};
     for (final category in categories) {
       categoryRanking[category] = _calculateRanking(category, entries, isAscendingMetric(category));
     }
@@ -219,7 +244,7 @@ class Ranking {
     return Ranking._(newLeaderboardResult, updatedWeights);
   }
 
-  static String _formatRankingScore(num value) {
+  static String _formatRankingScore(Score value) {
     if (value == double.maxFinite) {
       return "Infinite";
     }
@@ -269,11 +294,11 @@ class Ranking {
 
   List<String> get categories => _result.rankingMap.keys.toList();
 
-  List<(RankingEntry, num)> getLeaderboardRanking({bool ascending = false}) {
+  List<(Place, RankingEntry, num)> getLeaderboardRanking({bool ascending = false}) {
     return ascending ? _result.calculatedLeaderboardRanking.reversed.toList() : _result.calculatedLeaderboardRanking;
   }
 
-  List<(RankingEntry, num)>? getCategoryRanking({required String category, bool ascending = false}) {
+  List<(Place, RankingEntry, num)>? getCategoryRanking({required String category, bool ascending = false}) {
     final categoryMap = _result.categoryRankingMap[category];
     if (categoryMap == null) {
       return null;

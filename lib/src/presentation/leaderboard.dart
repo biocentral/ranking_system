@@ -63,7 +63,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                   if (widget.includeCategoryRanking) buildRankingSelection(_currentRanking),
                   if (_selectedRanking == _globalRankingName) buildInformation(_currentRanking),
                   if (_selectedRanking == _globalRankingName) buildWeightsSelection(),
-                  if (_selectedRanking == _globalRankingName) buildRankingVisualization(_currentRanking),
+                  if (_selectedRanking == _globalRankingName) buildLeaderboardVisualization(_currentRanking),
                   if (_selectedRanking != _globalRankingName)
                     buildCategoryVisualization(_selectedRanking, _currentRanking),
                   Tooltip(
@@ -165,51 +165,9 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     );
   }
 
-  Widget buildRankingVisualization(Ranking ranking) {
+  Widget buildLeaderboardVisualization(Ranking ranking) {
     final leaderboardRanking = ranking.getLeaderboardRanking();
-
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            ...leaderboardRanking.asMap().entries.map((entry) {
-              final index = entry.key;
-              final name = entry.value.$1.name;
-              final score = entry.value.$2.toStringAsFixed(1);
-
-              return Tooltip(
-                message: ranking.verboseRankingByEntry(name),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: ListTile(
-                    leading: Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(color: _getRankColor(index), shape: BoxShape.circle),
-                      child: Center(
-                        child: Text(
-                          '${index + 1}',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                    title: Text(name, style: const TextStyle(fontSize: 18)),
-                    subtitle: index == 0
-                        ? Text(getScoreHint(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400))
-                        : null,
-                    trailing: Text(score.toString(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
+    return buildRankingVisualization(ranking, leaderboardRanking, (entry) => entry.$3.toStringAsFixed(1));
   }
 
   Widget buildCategoryVisualization(String category, Ranking ranking) {
@@ -217,6 +175,21 @@ class _LeaderboardViewState extends State<LeaderboardView> {
 
     if (categoryRanking == null) {
       return Text("ERROR: No ranking found for category $category!");
+    }
+
+    return buildRankingVisualization(ranking, categoryRanking, (entry) => entry.$2.metrics[category].toString());
+  }
+
+  Widget buildRankingVisualization(
+    Ranking ranking,
+    List<(Place, RankingEntry, Score)> rankingList,
+    String Function((Place, RankingEntry, Score)) retrieveScoreFunction,
+  ) {
+    // Group entries by place to identify ties
+    final Map<int, List<(Place, RankingEntry, Score)>> groupedByPlace = {};
+    for (final entry in rankingList) {
+      final place = entry.$1;
+      groupedByPlace.putIfAbsent(place, () => []).add(entry);
     }
 
     return Card(
@@ -227,32 +200,59 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 16),
-            ...categoryRanking.asMap().entries.map((entry) {
-              final index = entry.key;
-              final name = entry.value.$1.name;
-              final metric = entry.value.$1.metrics[category];
+            ...groupedByPlace.entries.map((placeGroup) {
+              final place = placeGroup.key;
+              final entries = placeGroup.value;
+              final isTied = entries.length > 1;
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(color: _getRankColor(index), shape: BoxShape.circle),
-                      child: Center(
-                        child: Text(
-                          '${index + 1}',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              // Build the list tiles for this place group
+              final tiles = entries.map((entry) {
+                final name = entry.$2.name;
+                final score = retrieveScoreFunction(entry);
+
+                return Tooltip(
+                  message: ranking.verboseRankingByEntry(name),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: ListTile(
+                      leading: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(color: _getRankColor(place), shape: BoxShape.circle),
+                        child: Center(
+                          child: Text(
+                            '$place',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
+                      title: Text(name, style: const TextStyle(fontSize: 18)),
+                      subtitle: place == 0
+                          ? Text(getScoreHint(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400))
+                          : null,
+                      trailing: Text(
+                        score.toString(),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(child: Text(name, style: const TextStyle(fontSize: 16))),
-                    Text(metric.toString(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              );
+                  ),
+                );
+              }).toList();
+
+              // Wrap tied entries with a border
+              if (isTied) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4.0),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black, width: 2.0),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: Column(children: tiles),
+                );
+              } else {
+                // Single entry, no border needed
+                return tiles.first;
+              }
             }),
           ],
         ),
@@ -260,12 +260,13 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     );
   }
 
-  Color _getRankColor(int index) {
-    if (index == 0) return Colors.red;
-    if (index == 1) return Colors.orange;
-    if (index == 2) return Colors.orangeAccent;
-    if (index == 3) return Colors.yellow;
-    if (index == 4) return Colors.yellow.shade300;
+  Color _getRankColor(int place) {
+    final zeroIndexed = place - 1;
+    if (zeroIndexed == 0) return Colors.red;
+    if (zeroIndexed == 1) return Colors.orange;
+    if (zeroIndexed == 2) return Colors.orangeAccent;
+    if (zeroIndexed == 3) return Colors.yellow;
+    if (zeroIndexed == 4) return Colors.yellow.shade300;
     return Colors.blue;
   }
 }
