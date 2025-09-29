@@ -1,13 +1,14 @@
 name: ranking_system
 description: "Flexible ranking and leaderboard system for Flutter with multi-metric calculations and rich UI components."
 version: 0.0.1
-homepage:
+homepage: https://github.com/biocentral/ranking_system/
 
 environment:
   sdk: ^3.8.1
   flutter: ">=1.17.0"
 
 dependencies:
+  collection: ^1.19.1
   flutter:
     sdk: flutter
   input_quantity: ^2.5.1
