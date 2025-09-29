@@ -37,7 +37,7 @@ final class _RankingResult {
   _RankingResult.leaderboard(this.categoryRankingMap, this.groupRankingMap, this.leaderboard)
     : calculatedLeaderboardRanking = calculateLeaderboardRanking(leaderboard);
 
-  static List<(Place, RankingEntry, num)> calculateLeaderboardRanking(final Map<RankingEntry, num> leaderboard) {
+  static List<(Place, RankingEntry, Score)> calculateLeaderboardRanking(final Map<RankingEntry, num> leaderboard) {
     // Sort by score descending (highest first)
     final sortedEntries = leaderboard.entries.sorted((e1, e2) => e1.value.compareTo(e2.value)).reversed.toList();
 
@@ -71,7 +71,7 @@ final class _RankingResult {
   }
 
   /// Get the actual ranking map that is used for the leaderboard calculation
-  Map<String, Map<RankingEntry, num>> get rankingMap => groupRankingMap != null ? groupRankingMap! : categoryRankingMap;
+  Map<String, Map<RankingEntry, Score>> get rankingMap => groupRankingMap != null ? groupRankingMap! : categoryRankingMap;
 
   int get numberCompetitors => leaderboard.keys.length;
 
@@ -176,7 +176,7 @@ class Ranking {
     }
 
     final categories = categoryRanking.rankingCategories;
-    final groupRanking = Map<String, Map<RankingEntry, num>>.from(categoryRanking.categoryRankingMap);
+    final groupRanking = Map<String, Map<RankingEntry, Score>>.from(categoryRanking.categoryRankingMap);
 
     for (final group in groups) {
       final categoriesToGroup = group.groupFunction(categories);
@@ -200,7 +200,7 @@ class Ranking {
   }
 
   /// Averages over all rankings within a group
-  static Map<RankingEntry, double> _getRankingsAverage(List<Map<RankingEntry, num>> rankings) {
+  static Map<RankingEntry, double> _getRankingsAverage(List<Map<RankingEntry, Score>> rankings) {
     final Map<RankingEntry, double> result = {};
     final int numberRankings = rankings.length;
     for (final ranking in rankings) {
@@ -288,11 +288,11 @@ class Ranking {
 
   List<String> get categories => _result.rankingMap.keys.toList();
 
-  List<(Place, RankingEntry, num)> getLeaderboardRanking({bool ascending = false}) {
+  List<(Place, RankingEntry, Score)> getLeaderboardRanking({bool ascending = false}) {
     return ascending ? _result.calculatedLeaderboardRanking.reversed.toList() : _result.calculatedLeaderboardRanking;
   }
 
-  List<(Place, RankingEntry, num)>? getCategoryRanking({required String category, bool ascending = false}) {
+  List<(Place, RankingEntry, Score)>? getCategoryRanking({required String category, bool ascending = false}) {
     final categoryMap = _result.categoryRankingMap[category];
     if (categoryMap == null) {
       return null;
