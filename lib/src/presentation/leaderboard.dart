@@ -102,6 +102,11 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               'Theoretical Highest Ranking Score: ${ranking.maximumRankingValue.toStringAsFixed(1)}\n',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
+            Text(
+              widget.isReversedRanking
+                  ? 'Higher ranking is worse (ascending)\n'
+                  : 'Higher ranking is better (descending)\n',
+            ),
             const Text('Categories:', style: TextStyle(fontWeight: FontWeight.bold)),
             ...ranking.categories.map((dataKey) => Text(dataKey)),
           ],
@@ -262,11 +267,23 @@ class _LeaderboardViewState extends State<LeaderboardView> {
 
   Color _getRankColor(int place) {
     final zeroIndexed = place - 1;
-    if (zeroIndexed == 0) return Colors.red;
-    if (zeroIndexed == 1) return Colors.orange;
-    if (zeroIndexed == 2) return Colors.orangeAccent;
-    if (zeroIndexed == 3) return Colors.yellow;
-    if (zeroIndexed == 4) return Colors.yellow.shade300;
-    return Colors.blue;
+    // Reversed (High is worse)
+    if (widget.isReversedRanking) {
+      return switch (zeroIndexed) {
+        0 => Colors.red,
+        1 => Colors.orange,
+        2 => Colors.orangeAccent,
+        3 => Colors.yellow,
+        4 => Colors.yellow.shade300,
+        _ => Colors.blue,
+      };
+    }
+    // Standard (High is better)
+    return switch (zeroIndexed) {
+      0 => Colors.orange, // GOLD
+      1 => Colors.grey, // SILVER
+      2 => Colors.amber, // BRONZE
+      _ => Colors.blue,
+    };
   }
 }
