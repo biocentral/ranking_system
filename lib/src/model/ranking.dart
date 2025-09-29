@@ -1,8 +1,8 @@
 import 'package:collection/collection.dart';
 import 'package:ranking_system/src/utils/type_utils.dart';
 
-typedef Score = num;  // Score for RankingEntry, calculated from position for a given category
-typedef Place = int;  // Place for RankingEntry in List for LeaderboardRanking, can be tied
+typedef Score = num; // Score for RankingEntry, calculated from position for a given category
+typedef Place = int; // Place for RankingEntry in List for LeaderboardRanking, can be tied
 
 class RankingEntry {
   final String name;
@@ -17,7 +17,6 @@ class RankingGroup {
 
   RankingGroup({required this.name, required this.groupFunction});
 }
-
 
 final class _RankingResult {
   final Map<String, Map<RankingEntry, Score>> categoryRankingMap;
@@ -38,14 +37,9 @@ final class _RankingResult {
   _RankingResult.leaderboard(this.categoryRankingMap, this.groupRankingMap, this.leaderboard)
     : calculatedLeaderboardRanking = calculateLeaderboardRanking(leaderboard);
 
-  static List<(Place, RankingEntry, num)> calculateLeaderboardRanking(
-      final Map<RankingEntry, num> leaderboard) {
-
+  static List<(Place, RankingEntry, num)> calculateLeaderboardRanking(final Map<RankingEntry, num> leaderboard) {
     // Sort by score descending (highest first)
-    final sortedEntries = leaderboard.entries
-        .sorted((e1, e2) => e1.value.compareTo(e2.value))
-        .reversed
-        .toList();
+    final sortedEntries = leaderboard.entries.sorted((e1, e2) => e1.value.compareTo(e2.value)).reversed.toList();
 
     final List<(Place, RankingEntry, num)> result = [];
 
